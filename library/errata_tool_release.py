@@ -131,11 +131,15 @@ options:
    state_machine_rule_set:
      description:
        - Workflow Rule Set
-       - Set to "null" to simply inherit the main workflow_rule_set
-         configuration from this release's product.
-       - If you omit this parameter, Ansible will default to "null" and re-set
-         the release's workflow ruleset back to null (so, inheriting the
-         product's ruleset).
+       - If you omit this parameter, Ansible will default to "null". For new
+         releases, this means the release will inherit the product's ruleset.
+         For existing releases, Ansible will not edit the server-side value if
+         this is null.
+       - To force Ansible to change an existing release's
+         state_machine_rule_set to "null" on the ET server, set this parameter
+         to an empty string "". For example, if the current rule set was
+         "unrestricted" and you wanted to alter it to "null" (to inherit from
+         the parent product), use an empty string here.
      choices: [default, unrestricted, cdn_push_only, covscan, rhel_7_beta,
                abidiff_pilot_deprecated, non_blocking_tps, covscan_deprecated,
                optional_tps_distqa, optional_stage_push_for_rhel_6_8,
@@ -342,6 +346,11 @@ def ensure_release(client, params, check_mode):
     # "None" means "let the server pick or keep a value":
     # Delete all null parameters.
     params = {param: val for param, val in params.items() if val is not None}
+
+    # Special-case state_machine_rule_set, because it's an enum, and it's
+    # important to be able to set this back to "null" if desired:
+    if params.get('state_machine_rule_set') == '':
+        params['state_machine_rule_set'] = None
 
     name = params['name']
     release = get_release(client, name)
